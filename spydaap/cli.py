@@ -19,7 +19,7 @@ import optparse
 import BaseHTTPServer, SocketServer, grp, os, pwd, select, signal, spydaap, sys
 import socket
 # import httplib, logging
-import spydaap.daap, spydaap.metadata, spydaap.containers, spydaap.cache, spydaap.server, spydaap.zeroconf
+import spydaap.daap, spydaap.metadata, spydaap.containers, spydaap.cache, spydaap.server, spydaap.zeroconf_local
 #from spydaap.daap import do
 
 config_file = os.path.join(spydaap.spydaap_dir, "config.py")
@@ -68,29 +68,29 @@ def rebuild_cache(signum=None, frame=None):
     cache.clean()
 
 def make_shutdown(httpd):
-    def _shutdown(signum, frame): 
-        httpd.force_stop() 
+    def _shutdown(signum, frame):
+        httpd.force_stop()
     return _shutdown
 
 # invalid default pid ; prevents killing something unintended
 def really_main(opts, parent_pid=99999999999999):
     rebuild_cache()
-    zeroconf = spydaap.zeroconf.Zeroconf(spydaap.server_name,
-                                         spydaap.port,  
-                                         stype="_daap._tcp")
+    zeroconf = spydaap.zeroconf_local.Zeroconf(spydaap.server_name,
+                                               spydaap.port,
+                                               stype="_daap._tcp.local.")
     zeroconf.publish()
     try:
-        httpd = MyThreadedHTTPServer(('0.0.0.0', spydaap.port), 
+        httpd = MyThreadedHTTPServer(('0.0.0.0', spydaap.port),
                                      spydaap.server.makeDAAPHandlerClass(spydaap.server_name, cache, md_cache, container_cache))
         # write pid to pidfile
         open(opts.pidfile,'w').write("%d" % parent_pid)
     except socket.error:
         if not opts.daemonize:
             print "Another DAAP server is already running. Exiting."
-            
+
         sys.exit(0) # silently exit; another instance is already running
-        
-    
+
+
     signal.signal(signal.SIGTERM, make_shutdown(httpd))
     signal.signal(signal.SIGHUP, rebuild_cache)
 
@@ -115,19 +115,19 @@ def main():
     parser.add_option("-d", "--daemon", action="store_true",
                       dest="daemonize", default=False,
                       help="run in the background as a daemon process")
-    
+
     parser.add_option("-k", "--kill", action="store_true",
                       dest="kill_daemon", default=False,
                       help="kill a running daemon process")
-    
+
     parser.add_option("-n", "--servername", dest="servername",
                       default=None,
                       help="set the server-name (must be < 64 chars); default is 'spydaap'")
-    
+
     parser.add_option("-f", "--folder", dest="folderpath",
                       default=None,
                       help="set the path to the media folder (default is ~/Music)")
-    
+
     parser.add_option("-q", "--quiet", action="store_true",
                       dest="quiet", default=False,
                       help="suppress logging to stdout")
@@ -156,7 +156,7 @@ def main():
     #ensure the that the daemon runs a normal user
     os.setegid(opts.group)
     os.seteuid(opts.user)
-    
+
     if opts.kill_daemon:
         try:
             pid = int(open(opts.pidfile,'r').read())
@@ -164,19 +164,19 @@ def main():
             print "Daemon killed."
         except (OSError, IOError):
             print "Unable to kill daemon -- not running, or missing pid file?"
-        
+
         sys.exit(0)
-    
+
     if opts.servername is not None:
         spydaap.server_name = opts.servername
-    
+
     if len(spydaap.server_name) > 63:
         # truncate to max valid length (63 characters)
         spydaap.server_name = spydaap.server_name[:63]
-    
+
     if opts.folderpath is not None:
         spydaap.media_path = os.path.expanduser(opts.folderpath)
-    
+
     if not(opts.daemonize):
         if not opts.quiet:
             print "spydaap server started (use --help for more options).  Press Ctrl-C to exit."
@@ -206,7 +206,7 @@ def main():
         try:
             pid = os.fork()
             # if in second parent, exit from it
-            if pid > 0: 
+            if pid > 0:
                 # store pid temporarily (don't overwrite real pidfile until we
                 # know server has successfully started)
                 open(opts.pidfile + '.tmp','w').write("%d" % pid)
@@ -217,7 +217,7 @@ def main():
             sys.exit(1)
         # load parent pid
         parent_pid = int(open(opts.pidfile + '.tmp','r').read())
-        
+
         really_main(opts, parent_pid)
 
 if __name__ == "__main__":

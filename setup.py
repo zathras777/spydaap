@@ -1,12 +1,5 @@
 from setuptools import setup
-import platform
 
-reqs=["mutagen>=1.2"]
-# use avahi if available
-try:
-    import avahi
-except ImportError:
-    reqs.append("pybonjour>=1.1")
 
 setup(
     name="spydaap",
@@ -32,7 +25,7 @@ Features:
  - Caches almost everything for fast performance.
  - Embeddable.""",
     url="http://launchpad.net/spydaap/",
-    install_requires=reqs,
+    install_requires=["mutagen>=1.2", "zeroconf"],
     entry_points={
         'console_scripts': [
             'spydaap=spydaap.cli:main'
